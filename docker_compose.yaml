@@ -1,0 +1,3 @@
+docker-compose.yaml
+  Due servizi: minio (object store con bucket pre-creato) e api (container con
+  l'app FastAPI). Monta i pesi del modello come volume.     

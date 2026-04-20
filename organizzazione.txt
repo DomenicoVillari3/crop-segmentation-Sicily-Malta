@@ -1,0 +1,94 @@
+ ---                                                                           
+  Configurazione e setup                                                        
+                                                                                
+  config.py                                                                     
+  Centralizza tutte le costanti: endpoint MinIO, bucket name, credenziali, path 
+  del modello, parametri STAC (stagioni, cloud cover), chip size, overlap, bande
+   Sentinel-2, PIXEL_AREA_M2. Carica anche config.json e lo espone come oggetto 
+  unico usato da tutti gli altri moduli.                                        
+                  
+  ---
+  Livello dati
+              
+  minio_store.py
+  Wrappa boto3. Espone 3 operazioni pulite: cercare se esiste già una tile che  
+  copre un punto/bbox (con check sui metadata bbox dell'object), scaricare un   
+  cubo .npy, caricare un cubo .npy con PNG preview. Eredita la logica di        
+  worker_minio.py e minio_inference_v2.py per il check is_mostly_water_or_empty.
+                  
+  stac_downloader.py
+  Incapsula tutta la logica pystac + stackstac: dato un bbox, scarica il cubo 4D
+   multistagionale (winter/spring/summer/autumn, 6 bande). Unica responsabilità:
+   ritornare np.ndarray (T, C, H, W) o None.
+                                                                                
+  data_resolver.py
+  Orchestratore della sorgente dati. Data una richiesta (POI o bbox), decide:
+  usa MinIO se la tile esiste e copre l'area, altrimenti chiama stac_downloader.
+   Gestisce il smart_crop centrato sul POI, l'aggiunta/rimozione del margine
+  extra, e il salvataggio on-the-fly su MinIO dopo un download STAC. Contiene   
+  get_bbox_from_point, _tile_covers_request, _tile_covers_bbox, _trim_margin,
+  smart_crop.
+
+  ---                                                                           
+  Livello modello
+                                                                                
+  model_service.py
+  Singleton che carica i pesi Prithvi una sola volta all'avvio. Espone
+  predict_chip(tensor) → (pred_mask, confidence_map). Gestisce device           
+  (CUDA/CPU), normalizzazione con means/stds, e pulizia dello state_dict
+  (_orig_mod.).                                                                 
+                  
+  inference_engine.py                                                           
+  Prende un cubo numpy, esegue lo sliding window con overlap configurabile
+  (logica da minio_inference_v2.py), scrive solo la regione centrale di ogni    
+  chip per evitare artefatti. Applica il filtro acqua (NIR estate < 400).
+  Ritorna la maschera finale (H, W) uint8.                                      
+                  
+  ---
+  Livello output
+
+  postprocess.py
+  Funzioni pure: colorizza la maschera in RGB, calcola NDVI per stagione,
+  calcola distribuzione classi in ettari e percentuale, genera le immagini      
+  output (RGB satellite, segmentation, overlay, confidence, NDVI map) e le
+  serializza come PNG o bytes.                                                  
+                  
+  ---
+  Livello API
+
+  schemas.py
+  Modelli Pydantic per input/output: PointRequest, BBoxRequest, AnalysisRequest,
+   AnalysisResponse (con task_id, status, progress), ClassDistribution,         
+  NDVITimeseries.
+                                                                                
+  main.py         
+  FastAPI app. Endpoint:
+  - POST /api/v1/analysis/run → accetta POI o bbox, lancia pipeline in
+  background, ritorna task_id                                                   
+  - GET /api/v1/analysis/{task_id}/status → polling con progress 0-100 e
+  risultato finale                                                              
+  - GET /api/v1/analysis/{task_id}/image → ritorna il PNG segmentato (o overlay)
+  - GET /api/v1/classes → catalogo classi con colori hex                        
+  - GET /api/v1/health → stato modello, GPU, MinIO                              
+                                                                                
+  ---                                                                           
+  Deploy                                                                        
+                                                                                
+  docker-compose.yaml
+  Due servizi: minio (object store con bucket pre-creato) e api (container con
+  l'app FastAPI). Monta i pesi del modello come volume.                         
+   
+  ---                                                                           
+  In totale 8 file Python + 1 yaml, con dipendenze ben definite:
+                                                                                
+  main.py
+    └─ schemas.py                                                               
+    └─ model_service.py
+    └─ data_resolver.py                                                         
+          ├─ minio_store.py
+          └─ stac_downloader.py                                                 
+    └─ inference_engine.py
+          └─ model_service.py
+    └─ postprocess.py                                                           
+    └─ config.py  ← importato da tutti
+    
