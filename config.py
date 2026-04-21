@@ -17,12 +17,13 @@ BACKBONE_MODEL_NAME = "terratorch_prithvi_eo_v2_100_tl"
 MODEL_WEIGHTS_PATH=os.getenv("MODEL_WEIGHTS_PATH")  # Verifica che MODEL_WEIGHTS_PATH sia definito
 
 # Credenziali sensibili → solo da env
-MINIO_ENDPOINT   = os.getenv("MINIO_ENDPOINT",   "localhost:9000")
+MINIO_ENDPOINT   = os.getenv("MINIO_ENDPOINT")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
+MINIO_BUCKET_NAME = os.getenv("MINIO_BUCKET_NAME")  # default se non definito in .env
 if not MINIO_ACCESS_KEY or not MINIO_SECRET_KEY:
     raise RuntimeError("Credenziali MinIO mancanti. Controlla il file .env")
-MINIO_BUCKET_NAME = "sentinel-2-data-v2"
+
 
 
 #Sentinel-2 parameters
