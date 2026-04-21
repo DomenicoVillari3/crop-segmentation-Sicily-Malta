@@ -325,6 +325,6 @@ class STACDownloader:
         logger.info(f"   Selezione scene per {year}:")
         for r in log:
             logger.info(
-                f"   {r.season:<8} | cloud={r.cloud_cover:>5.1f}% | {r.id}"
+                f"   {r.season:<8} | cloud={r.cloud_cover:>5.1f}% | {r.item_id}"
             )
         logger.info(f"   {'─'*55}\n")

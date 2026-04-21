@@ -26,6 +26,7 @@ import boto3
 import numpy as np
 from botocore.exceptions import ClientError
 from PIL import Image
+from datetime import datetime, timezone
 
 from config import (
     MINIO_ENDPOINT,
@@ -208,7 +209,7 @@ class MinioStore:
             "seasons":      json.dumps(seasons or ["winter","spring","summer","autumn"]),
             "task_id":      str(task_id),
             "shape":        json.dumps(list(cube.shape)),
-            "uploaded_at":  datetime.utcnow().isoformat(),
+            "uploaded_at":   datetime.now(timezone.utc).isoformat(),
         }
 
         # Chiave strutturata per anno
