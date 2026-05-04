@@ -4,20 +4,20 @@ main.py
 =======
 uvicorn main:app --reload --host 0.0.0.0 --port 8400
 
-http://IP_MACCHINA:8400/api/v1/docs
+http://IP_MACCHINA:8400/satellitedocs
 =======
 
 FastAPI app — livello API del sistema.
 
 Endpoint:
-  POST /api/v1/analysis/point        → avvia analisi da POI
-  POST /api/v1/analysis/bbox         → avvia analisi da bbox
-  GET  /api/v1/analysis/{task_id}/status  → polling risultato
-  GET  /api/v1/analysis/{task_id}/image   → PNG overlay
-  GET  /api/v1/analysis/{task_id}/ndvi    → NDVI timeseries
-  GET  /api/v1/analysis/{task_id}/legend  → legenda con ettari
-  GET  /api/v1/classes                    → legenda statica (senza ettari)
-  GET  /api/v1/health                     → stato sistema
+  POST /satellite/point        → avvia analisi da POI
+  POST /satellite/bbox         → avvia analisi da bbox
+  GET  /satellite/{task_id}/status  → polling risultato
+  GET  /satellite/{task_id}/image   → PNG overlay
+  GET  /satellite/{task_id}/ndvi    → NDVI timeseries
+  GET  /satellite/{task_id}/legend  → legenda con ettari
+  GET  /satellite/classes                    → legenda statica (senza ettari)
+  GET  /satellite/health                     → stato sistema
 """
 
 from __future__ import annotations
@@ -176,7 +176,7 @@ async def _run_pipeline(task_id: str, lat: float, lon: float, year: int) -> None
 # ---------------------------------------------------------------------------
 
 @app.post(
-    f"{API_V1_PREFIX}/analysis/point",
+    f"{API_V1_PREFIX}/point",
     response_model=AnalysisResponse,
     status_code=202,
     summary="Avvia analisi da punto di interesse (POI)",
@@ -198,7 +198,7 @@ async def start_analysis_point(req: PointRequest):
 
 
 @app.post(
-    f"{API_V1_PREFIX}/analysis/bbox",
+    f"{API_V1_PREFIX}/bbox",
     response_model=AnalysisResponse,
     status_code=202,
     summary="Avvia analisi da bounding box",
@@ -263,7 +263,7 @@ async def start_analysis_bbox(req: BBoxRequest):
 # ---------------------------------------------------------------------------
 
 @app.get(
-    f"{API_V1_PREFIX}/analysis/{{task_id}}/status",
+    f"{API_V1_PREFIX}/{{task_id}}/status",
     response_model=AnalysisResponse,
     summary="Polling stato analisi",
     tags=["Analysis"],
@@ -296,7 +296,7 @@ async def get_status(task_id: str):
 
 
 @app.get(
-    f"{API_V1_PREFIX}/analysis/{{task_id}}/image",
+    f"{API_V1_PREFIX}/{{task_id}}/image",
     response_class=Response,
     summary="Scarica overlay PNG (RGB satellite + segmentazione)",
     tags=["Analysis"],
@@ -318,7 +318,7 @@ async def get_image(task_id: str):
 
 
 @app.get(
-    f"{API_V1_PREFIX}/analysis/{{task_id}}/ndvi",
+    f"{API_V1_PREFIX}/{{task_id}}/ndvi",
     response_model=NDVIResponse,
     summary="NDVI timeseries per stagione",
     tags=["Analysis"],
@@ -346,7 +346,7 @@ async def get_ndvi(task_id: str):
 
 
 @app.get(
-    f"{API_V1_PREFIX}/analysis/{{task_id}}/legend",
+    f"{API_V1_PREFIX}/{{task_id}}/legend",
     response_model=LegendResponse,
     summary="Legenda con ettari dell'analisi corrente",
     tags=["Analysis"],

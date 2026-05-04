@@ -97,7 +97,7 @@ CLASS_COLORS_HEX = [
 
 MAX_CONCURRENT_INFERENCES = 4   # Semaphore per asyncio
 TASK_TTL_SECONDS = 3600         # quanto teniamo i risultati in memoria
-API_V1_PREFIX = "/api/v1"
+API_V1_PREFIX = "/satellite"
 
 
 # --- Water / Empty detection ---

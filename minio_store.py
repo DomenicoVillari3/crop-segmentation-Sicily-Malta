@@ -123,8 +123,19 @@ class MinioStore:
                     found_years.append(year_val)
                     break  # basta una tile per anno, passa al prossimo prefix
         return found_years
+    
+    @staticmethod
+    def _year_from_key(key: str) -> int | None:
+        """Estrae l'anno dalla chiave strutturata es. raw_cubes/year=2023/lat_...npy"""
+        try:
+            for part in key.split("/"):
+                if part.startswith("year="):
+                    return int(part.split("=")[1])
+        except (ValueError, IndexError):
+            pass
+        return None
 
-    def find_tile_by_bbox(self, request_bbox: list[float]) -> tuple[str | None, list | None]:
+    def find_tile_by_bbox(self, request_bbox: list[float]) -> tuple[str | None, list | None, int | None]:
         """
         Cerca una tile che contenga interamente il bbox richiesto.
 
@@ -136,13 +147,14 @@ class MinioStore:
             tile_bbox = self._parse_bbox(meta)
             if tile_bbox is None:
                 continue
-
-            if self._bbox_contains(tile_bbox, request_bbox):
-                logger.info(f"✅ Tile trovata: {key}")
-                return key, tile_bbox
+        if self._bbox_contains(tile_bbox, request_bbox):
+            # Estrai anno dal prefix della chiave (es. raw_cubes/year=2023/...)
+            year_found = self._year_from_key(key)
+            logger.info(f"✅ Tile trovata: {key} (anno {year_found})")
+            return key, tile_bbox, year_found
 
         logger.info("❌ Nessuna tile trovata per il bbox richiesto.")
-        return None, None
+        return None, None,None
 
     # -----------------------------------------------------------------------
     # OPERAZIONE 2 — download_cube
