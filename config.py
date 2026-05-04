@@ -65,7 +65,7 @@ PIXEL_AREA_M2 = 100.0     # 10m x 10m
 M2_TO_HECTARES = 10000.0
 # Margine extra durante il download (poi trimmato dopo l'inferenza)
 # Serve per evitare che il POI cada sul bordo di un chip
-DOWNLOAD_MARGIN_PX = 32   # pixel extra su ogni lato
+
 OVERLAP = 0.25   # 25% — overlap tra chip adiacenti
 OVERLAY_OPACITY = 0.55     # bilanciamento visibilità maschera/satellite
 
@@ -108,6 +108,7 @@ MIN_CONFIDENCE        = float(os.getenv("MIN_CONFIDENCE", "0.0"))  # 0 = disabil
 
 
 POI_BBOX_SIZE_DEG  = 0.1    # 0.1° ≈ 11km — area download on-the-fly per POI
+#POI_BBOX_SIZE_DEG  = 0.05    # 0.05° ≈ 5,5km — area download on-the-fly per POI
 DOWNLOAD_MARGIN_PX = 32     # pixel extra scaricati e poi rimossi post-inferenza
 
 '''Prior Scaling bayesiano: dividendo la probabilità 

@@ -35,7 +35,7 @@ services:
     networks:
       - bigdata-net
 # Networks va al livello radice, non identato sotto services
-api:
+  api:
     build:
       context: .
       dockerfile: Dockerfile
@@ -48,12 +48,11 @@ api:
       MINIO_SECRET_KEY:   ${MINIO_SECRET_KEY}
       MINIO_BUCKET_NAME:  ${MINIO_BUCKET_NAME}
       MINIO_SECURE:       "false"
-      MODEL_WEIGHTS_PATH: ${MODEL_WEIGHTS_PATH}
+      MODEL_WEIGHTS_PATH: /${MODEL_WEIGHTS_PATH}
     depends_on:
-      minio:
-        condition: service_healthy
+      - minio
     networks:
-      - smartfood-net
+      - bigdata-net
     deploy:
       resources:
         reservations:

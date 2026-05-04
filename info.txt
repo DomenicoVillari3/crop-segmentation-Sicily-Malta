@@ -2,3 +2,7 @@ conda activate semantic_segementation_env
 docs: http://10.20.30.200:8400/satellite/docs
 run fastapi server: uvicorn main:app --reload --host 0.0.0.0 --port 8400
 python3 demo_gui_endpoints.py 
+
+pip install pipreqs
+pipreqs /percorso/del/tuo/progetto
+docker compose logs -f api
