@@ -9,6 +9,7 @@ import gradio as gr
 import httpx
 import time
 import io
+import os
 import logging
 from PIL import Image
 
@@ -20,15 +21,17 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Configurazione
 # ---------------------------------------------------------------------------
-API_BASE        = f"http://localhost:8400{API_V1_PREFIX}"
+API_BASE = os.getenv("API_BASE_URL", "http://localhost:8400") + API_V1_PREFIX
+print(f"[CONFIG] API_BASE = {API_BASE}")
+#API_BASE        = f"http://localhost:8400{API_V1_PREFIX}"
 POLL_INTERVAL_S = 3
 TIMEOUT_S       = 300
 
 POI_PRESETS = {
     "🍊 Agrumeti – Catania":         (37.380, 14.910),
     "🌾 Grano – Enna":               (37.567, 14.279),
-    "🌾 Seminativo – Caltanissetta": (37.490, 14.060),
-    "🍊 Agrumeti – Lentini":         (37.285, 14.990),
+    #"🌾 Seminativo – Caltanissetta": (37.490, 14.060),
+    #"🍊 Agrumeti – Lentini":         (37.285, 14.990),
     "🏖️ Palermo Costa":              (38.115, 13.361),
     "🇲🇹 Terreni agricoli – Mosta":  (35.910, 14.425),
 }
@@ -295,7 +298,11 @@ def _build_legend_md() -> str:
 # ---------------------------------------------------------------------------
 
 def build_ui():
-    with gr.Blocks(title="Smart Food — Segmentazione Agricola") as demo:
+    with gr.Blocks(title="Smart Food — Segmentazione Agricola", theme=gr.themes.Default(
+        primary_hue="green",
+        secondary_hue="green",
+        neutral_hue="gray",
+    )) as demo:
 
         gr.Markdown("""
         # 🌍 Smart Food — Monitoraggio Satellitare
@@ -376,7 +383,7 @@ def build_ui():
                 gr.Markdown("### 📊 Risultati")
                 with gr.Tabs():
                     with gr.Tab("🗺️ Overlay"):
-                        overlay_out = gr.Image(label="RGB + Predizione", type="pil")
+                        overlay_out = gr.Image(label="RGB + Predizione", type="pil", height=400)
                     with gr.Tab("📈 Statistiche"):
                         stats_out = gr.Markdown("*Avvia un'analisi.*")
                     with gr.Tab("🌿 NDVI"):

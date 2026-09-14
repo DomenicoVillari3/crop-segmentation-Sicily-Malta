@@ -15,6 +15,7 @@ services:
       - ./minio_data:/data
     networks:
       - bigdata-net
+    restart: unless-stopped
 
   createbuckets:
     image: minio/mc
@@ -60,6 +61,26 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+    restart: unless-stopped
+
+
+
+  demo:
+    build:
+      context: .
+      dockerfile: Dockerfile.demo
+    container_name: smartfood-demo
+    ports:
+      - "7860:7860"
+    environment:
+      API_BASE_URL: http://api:8400
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+    depends_on:
+      - api
+    networks:
+      - bigdata-net
     restart: unless-stopped
 
 networks:
