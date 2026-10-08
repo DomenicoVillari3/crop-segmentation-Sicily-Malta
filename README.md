@@ -6,6 +6,26 @@ Il progetto, presentato nell'interfaccia come **Smart Food**, combina un modello
 
 > Il repository contiene il codice di inferenza e dei servizi. I pesi del modello devono essere forniti separatamente; non sono inclusi nel repository.
 
+## Contesto e contributo personale
+
+Questo lavoro costituisce la componente di **segmentazione semantica satellitare** del progetto **Smart Food**, sviluppata individualmente da **Domenico Villari**.
+
+Mi sono occupato di:
+
+- Individuare e selezionare i dataset e le annotazioni agricole necessari al progetto.
+- Sviluppare una pipeline distribuita con **Kafka/Redpanda** per scaricare ed elaborare immagini **Sentinel-2** su più nodi.
+- Eseguire il **fine-tuning di Prithvi EO v2** per la classificazione dei pixel nelle classi agricole di interesse mediterraneo.
+
+La pipeline di acquisizione è disponibile in [Kafka-distributed-download](https://github.com/DomenicoVillari3/Kafka-distributed-download). Questo repository raccoglie la componente di inferenza, le API e l'interfaccia dimostrativa per analizzare aree in Sicilia e a Malta. Il codice di addestramento e i pesi del fine-tuning non sono inclusi in questo repository.
+
+## Esempio di segmentazione
+
+![Confronto tra immagine Sentinel-2, ground truth e predizione Prithvi](assets/crop-segmentation-demo.png)
+
+Da sinistra: **immagine satellitare RGB**, **maschera ground truth**, **overlay delle annotazioni** e **overlay della predizione di Prithvi**. La legenda associa i colori alle classi agricole.
+
+La figura mostra un esempio concreto di predizione. Il valore **mIoU 86%** riportato nell'immagine non è accompagnato, in questo repository, da un protocollo che specifichi l'insieme di valutazione; non va quindi interpretato come una prestazione complessiva verificata su Sicilia e Malta.
+
 ## Funzionalità
 
 - Analisi da punto di interesse (latitudine e longitudine WGS84) o da bounding box.
@@ -291,4 +311,5 @@ Nel repository non è presente un file `LICENSE`. Le condizioni di riutilizzo de
 [Domenico Villari](https://github.com/DomenicoVillari3)
 
 Repository: [crop-segmentation-Sicily-Malta](https://github.com/DomenicoVillari3/crop-segmentation-Sicily-Malta)
+
 
