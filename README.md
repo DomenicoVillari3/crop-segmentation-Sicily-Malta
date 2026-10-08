@@ -270,15 +270,6 @@ Le altre impostazioni sono costanti in `config.py`: bande, classi, normalizzazio
 
 I cubi sono salvati in MinIO sotto `raw_cubes/year=YYYY/`; le anteprime RGB sotto `rgb_images/year=YYYY/`. I metadata includono bbox, anno e forma del cubo.
 
-## Limiti dell'implementazione corrente
-
-- **Percorso BBox:** in `MinioStore.find_tile_by_bbox()` il controllo di contenimento è fuori dal ciclo di ricerca. Con una cache vuota può accedere a variabili non inizializzate; con più tile valuta solo l'ultima. Inoltre `resolve_from_bbox()` non passa l'anno richiesto alla ricerca. Questi punti vanno corretti per rendere affidabili le analisi BBox.
-- **Task in memoria:** stato e risultati sono mantenuti nel processo API e si perdono al riavvio. La costante `TASK_TTL_SECONDS` è definita ma non è applicata; non è implementata una pulizia automatica. Usa un singolo worker finché il task store non è condiviso.
-- **Dati e validazione:** la disponibilità delle quattro scene dipende da area, anno e nuvole. Il repository non contiene script di training, dataset di valutazione o metriche che consentano di quantificare l'accuratezza in Sicilia e a Malta.
-- **Demo:** il polling termina dopo 300 secondi; il timeout della demo non annulla il task API.
-- **Deploy:** il Compose rende il bucket pubblico tramite `mc anonymous set public`; l'API non implementa autenticazione e abilita CORS per tutte le origini. Questa configurazione va rivista prima di esporre il servizio fuori dall'ambiente di sviluppo.
-- **Diagnostica MinIO:** il controllo `health` istanzia il client ma non verifica con una richiesta la raggiungibilità del bucket.
-
 ## Risoluzione dei problemi
 
 | Problema | Verifica |
