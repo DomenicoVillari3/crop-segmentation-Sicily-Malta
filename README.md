@@ -8,10 +8,9 @@ Il progetto, presentato nell'interfaccia come **Smart Food**, combina un modello
 
 ## Contesto e contributo personale
 
-Questo lavoro costituisce la componente di **segmentazione semantica satellitare** del progetto **Smart Food**, sviluppata individualmente da **Domenico Villari**.
+Questo lavoro costituisce la componente di **segmentazione semantica satellitare** del progetto **Smart Food**.
 
 Mi sono occupato di:
-
 - Individuare e selezionare i dataset e le annotazioni agricole necessari al progetto.
 - Sviluppare una pipeline distribuita con **Kafka/Redpanda** per scaricare ed elaborare immagini **Sentinel-2** su più nodi.
 - Eseguire il **fine-tuning di Prithvi EO v2** per la classificazione dei pixel nelle classi agricole di interesse mediterraneo.
@@ -24,10 +23,8 @@ La pipeline di acquisizione è disponibile in [Kafka-distributed-download](https
 
 Da sinistra: **immagine satellitare RGB**, **maschera ground truth**, **overlay delle annotazioni** e **overlay della predizione di Prithvi**. La legenda associa i colori alle classi agricole.
 
-La figura mostra un esempio concreto di predizione. Il valore **mIoU 86%** riportato nell'immagine non è accompagnato, in questo repository, da un protocollo che specifichi l'insieme di valutazione; non va quindi interpretato come una prestazione complessiva verificata su Sicilia e Malta.
 
 ## Funzionalità
-
 - Analisi da punto di interesse (latitudine e longitudine WGS84) o da bounding box.
 - Recupero dei cubi satellitari da MinIO e download da STAC quando i dati non sono in cache.
 - Input multistagionale: quattro osservazioni e sei bande Sentinel-2.
@@ -117,10 +114,9 @@ Nella radice del progetto:
 MINIO_ENDPOINT=localhost:9000
 MINIO_ACCESS_KEY=smartfood_local
 MINIO_SECRET_KEY=sostituisci_con_una_password_locale
-MINIO_BUCKET_NAME=sicily-sentinel-data
+MINIO_BUCKET_NAME=sentinel-data
 MINIO_API_PORT=9000
 MINIO_CONSOLE_PORT=9001
-
 MODEL_WEIGHTS_PATH=weights/model.pth
 API_BASE_URL=http://localhost:8400
 ```
