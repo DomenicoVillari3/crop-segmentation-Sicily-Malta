@@ -20,7 +20,7 @@ La pipeline di acquisizione è disponibile in [Kafka-distributed-download](https
 
 ## Esempio di segmentazione
 
-![Confronto tra immagine Sentinel-2, ground truth e predizione Prithvi](assets/crop-segmentation-demo.png)
+![Confronto tra immagine Sentinel-2, ground truth e predizione Prithvi](crop-segmentation-demo.png)
 
 Da sinistra: **immagine satellitare RGB**, **maschera ground truth**, **overlay delle annotazioni** e **overlay della predizione di Prithvi**. La legenda associa i colori alle classi agricole.
 
