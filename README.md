@@ -1,100 +1,101 @@
 # Crop Segmentation — Sicily & Malta
 
-Segmentazione semantica delle colture agricole da immagini satellitari **Sentinel-2 L2A**, con una pipeline pensata per l'analisi di aree in Sicilia e a Malta.
+Semantic segmentation of agricultural crops from **Sentinel-2 L2A** satellite imagery, using a pipeline designed to analyze areas in Sicily and Malta.
 
-Il progetto, presentato nell'interfaccia come **Smart Food**, combina un modello **Prithvi EO v2**, un'API **FastAPI**, una cache **MinIO** e una demo **Gradio**. A partire da un punto geografico o da una bounding box, restituisce un overlay della segmentazione, la distribuzione delle superfici e le statistiche NDVI per quattro stagioni.
+The project, presented in the interface as **Smart Food**, combines a **Prithvi EO v2** model, a **FastAPI** API, a **MinIO** cache, and a **Gradio** demo. Given a geographic point or a bounding box, it returns a segmentation overlay, the distribution of crop areas, and NDVI statistics for four seasons.
 
-> Il repository contiene il codice di inferenza e dei servizi. I pesi del modello devono essere forniti separatamente; non sono inclusi nel repository.
+> The repository contains the inference and service code. Model weights must be provided separately; they are not included in the repository.
 
-## Contesto e contributo personale
+## Background and Personal Contribution
 
-Questo lavoro costituisce la componente di **segmentazione semantica satellitare** del progetto **Smart Food**.
+This work forms the **satellite semantic segmentation** component of the **Smart Food** project.
 
-Mi sono occupato di:
-- Individuare e selezionare i dataset e le annotazioni agricole necessari al progetto.
-- Sviluppare una pipeline distribuita con **Kafka/Redpanda** per scaricare ed elaborare immagini **Sentinel-2** su più nodi.
-- Eseguire il **fine-tuning di Prithvi EO v2** per la classificazione dei pixel nelle classi agricole di interesse mediterraneo.
+My contributions included:
 
-La pipeline di acquisizione è disponibile in [Kafka-distributed-download](https://github.com/DomenicoVillari3/Kafka-distributed-download). Questo repository raccoglie la componente di inferenza, le API e l'interfaccia dimostrativa per analizzare aree in Sicilia e a Malta. Il codice di addestramento e i pesi del fine-tuning non sono inclusi in questo repository.
+- Identifying and selecting the datasets and agricultural annotations required for the project.
+- Developing a distributed **Kafka/Redpanda** pipeline to download and process **Sentinel-2** imagery across multiple nodes.
+- **Fine-tuning Prithvi EO v2** to classify pixels into agricultural classes relevant to the Mediterranean region.
 
-## Esempio di segmentazione
+The acquisition pipeline is available at [Kafka-distributed-download](https://github.com/DomenicoVillari3/Kafka-distributed-download). This repository contains the inference component, APIs, and demo interface for analyzing areas in Sicily and Malta. The training code and fine-tuned weights are not included in this repository.
 
-![Confronto tra immagine Sentinel-2, ground truth e predizione Prithvi](crop-segmentation-demo.png)
+## Segmentation Example
 
-Da sinistra: **immagine satellitare RGB**, **maschera ground truth**, **overlay delle annotazioni** e **overlay della predizione di Prithvi**. La legenda associa i colori alle classi agricole.
+![Comparison of a Sentinel-2 image, ground truth, and Prithvi prediction](crop-segmentation-demo.png)
 
+From left to right: **RGB satellite image**, **ground truth mask**, **annotation overlay**, and **Prithvi prediction overlay**. The legend maps colors to agricultural classes.
 
-## Funzionalità
-- Analisi da punto di interesse (latitudine e longitudine WGS84) o da bounding box.
-- Recupero dei cubi satellitari da MinIO e download da STAC quando i dati non sono in cache.
-- Input multistagionale: quattro osservazioni e sei bande Sentinel-2.
-- Inferenza su chip da **224 × 224 pixel**, con overlap del **25%** e accumulo delle predizioni pesate dalla confidenza nelle zone sovrapposte.
-- Filtro acqua basato sul NIR estivo e filtro di confidenza opzionale.
-- Overlay PNG con bordi privi di dati resi trasparenti.
-- Superfici per classe in ettari e percentuali.
-- NDVI stagionale con media, deviazione standard, minimo e massimo.
-- Elaborazione in background con polling dello stato.
-- Demo web con preset per Sicilia e Malta.
+## Features
+
+- Analysis from a point of interest (WGS84 latitude and longitude) or a bounding box.
+- Retrieval of satellite data cubes from MinIO and downloading from STAC when data is not cached.
+- Multiseason input: four observations and six Sentinel-2 bands.
+- Inference on **224 × 224-pixel** chips, with **25%** overlap and confidence-weighted accumulation of predictions in overlapping regions.
+- Water filtering based on summer NIR and an optional confidence filter.
+- PNG overlays with transparent no-data borders.
+- Per-class areas in hectares and percentages.
+- Seasonal NDVI with mean, standard deviation, minimum, and maximum.
+- Background processing with status polling.
+- Web demo with presets for Sicily and Malta.
 
 ## Pipeline
 
-1. L'API riceve coordinate e anno e restituisce un `task_id`.
-2. `DataResolver` cerca una tile in MinIO; in assenza di dati utilizzabili richiede un cubo a `STACDownloader`.
-3. Il downloader seleziona una scena per stagione dal catalogo Earth Search, collection `sentinel-2-l2a`, e ricampiona le bande su una griglia UTM a **10 m/pixel**.
-4. `ModelService` normalizza l'input e applica il backbone `terratorch_prithvi_eo_v2_100_tl` con il decoder residuo definito in `architecture.py`.
-5. `InferenceEngine` ricompone la maschera e applica i filtri.
-6. `postprocess.py` genera overlay, superfici e serie NDVI.
+1. The API receives coordinates and a year, then returns a `task_id`.
+2. `DataResolver` searches for a tile in MinIO; if no usable data is available, it requests a cube from `STACDownloader`.
+3. The downloader selects one scene per season from the Earth Search catalog, using the `sentinel-2-l2a` collection, and resamples the bands onto a UTM grid at **10 m/pixel**.
+4. `ModelService` normalizes the input and applies the `terratorch_prithvi_eo_v2_100_tl` backbone with the residual decoder defined in `architecture.py`.
+5. `InferenceEngine` reconstructs the mask and applies the filters.
+6. `postprocess.py` generates overlays, area statistics, and NDVI series.
 
-Il cubo ha forma `(T, C, H, W) = (4, 6, H, W)`. Le bande, nell'ordine atteso, sono:
+The cube has shape `(T, C, H, W) = (4, 6, H, W)`. The bands, in the expected order, are:
 
-| Indice | Banda | Asset STAC | Descrizione |
+| Index | Band | STAC Asset | Description |
 | ---: | --- | --- | --- |
-| 0 | B02 | `blue` | Blu |
-| 1 | B03 | `green` | Verde |
-| 2 | B04 | `red` | Rosso |
-| 3 | B08 | `nir08` | Infrarosso vicino |
+| 0 | B02 | `blue` | Blue |
+| 1 | B03 | `green` | Green |
+| 2 | B04 | `red` | Red |
+| 3 | B08 | `nir08` | Near infrared |
 | 4 | B11 | `swir16` | SWIR 1 |
 | 5 | B12 | `swir22` | SWIR 2 |
 
-Le finestre effettive di selezione sono definite in `stac_downloader.py`:
+The actual selection windows are defined in `stac_downloader.py`:
 
-| Stagione | Finestra nell'anno richiesto |
+| Season | Window within the Requested Year |
 | --- | --- |
-| `winter` | 1 gennaio – ultimo giorno di febbraio |
-| `spring` | 15 aprile – 30 maggio |
-| `summer` | 1 luglio – 15 agosto |
-| `autumn` | 1 ottobre – 15 novembre |
+| `winter` | January 1 – last day of February |
+| `spring` | April 15 – May 30 |
+| `summer` | July 1 – August 15 |
+| `autumn` | October 1 – November 15 |
 
-La soglia iniziale di copertura nuvolosa è **< 20%**, con fallback a **< 40%**. L'analisi richiede una scena disponibile per ogni stagione; la selezione usa la copertura nuvolosa della scena e non una maschera nuvole per pixel.
+The initial cloud cover threshold is **< 20%**, with a fallback to **< 40%**. The analysis requires an available scene for each season; selection uses scene-level cloud cover rather than a per-pixel cloud mask.
 
-## Classi
+## Classes
 
-| ID | Classe | Colore |
+| ID | Class | Color |
 | ---: | --- | --- |
-| 0 | Sfondo | `#000000` |
-| 1 | Olivo | `#32ff32` |
-| 2 | Vite | `#ff00ff` |
-| 3 | Agrumi | `#ff8c00` |
-| 4 | Frutteto | `#0066ff` |
-| 5 | Cereali | `#ffff00` |
-| 6 | Legumi | `#00ffff` |
-| 7 | Ortaggi | `#ff0000` |
-| 8 | Incolto | `#ffffff` |
+| 0 | Background | `#000000` |
+| 1 | Olive | `#32ff32` |
+| 2 | Grapevine | `#ff00ff` |
+| 3 | Citrus | `#ff8c00` |
+| 4 | Orchard | `#0066ff` |
+| 5 | Cereals | `#ffff00` |
+| 6 | Legumes | `#00ffff` |
+| 7 | Vegetables | `#ff0000` |
+| 8 | Uncultivated land | `#ffffff` |
 
-La classe 0 è esclusa dalle statistiche delle superfici e dall'NDVI. L'endpoint `/satellite/classes` espone le classi da 1 a 8.
+Class 0 is excluded from area statistics and NDVI. The `/satellite/classes` endpoint exposes classes 1 through 8.
 
-## Avvio con Docker
+## Running with Docker
 
-### Prerequisiti
+### Prerequisites
 
-- Git, Docker e Docker Compose.
-- Una GPU NVIDIA e il supporto GPU configurato per Docker: il Compose incluso riserva una GPU al servizio API.
-- Accesso Internet per scaricare immagini, dipendenze e dati STAC. Il catalogo STAC viene aperto anche all'avvio dell'API.
-- Uno `state_dict` PyTorch compatibile con il backbone e il decoder del progetto.
+- Git, Docker, and Docker Compose.
+- An NVIDIA GPU with GPU support configured for Docker: the included Compose file reserves one GPU for the API service.
+- Internet access to download images, dependencies, and STAC data. The STAC catalog is also opened during API startup.
+- A PyTorch `state_dict` compatible with the project's backbone and decoder.
 
-Il Dockerfile API usa `pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime`; la demo usa `python:3.11-slim`.
+The API Dockerfile uses `pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime`; the demo uses `python:3.11-slim`.
 
-### 1. Clona il repository e aggiungi i pesi
+### 1. Clone the Repository and Add the Weights
 
 ```bash
 git clone https://github.com/DomenicoVillari3/crop-segmentation-Sicily-Malta.git
@@ -102,18 +103,18 @@ cd crop-segmentation-Sicily-Malta
 mkdir -p weights
 ```
 
-Copia il checkpoint compatibile in `weights/model.pth`. Questo nome è un esempio: puoi usare un altro nome aggiornando la configurazione.
+Copy the compatible checkpoint to `weights/model.pth`. This filename is an example: you can use another name by updating the configuration.
 
-Il caricamento usa `load_state_dict(..., strict=True)` e rimuove i prefissi `_orig_mod.`. Il file deve contenere direttamente lo state dictionary compatibile, non un checkpoint con una struttura diversa.
+Loading uses `load_state_dict(..., strict=True)` and strips `_orig_mod.` prefixes. The file must directly contain the compatible state dictionary, rather than a checkpoint with a different structure.
 
-### 2. Crea il file `.env`
+### 2. Create the `.env` File
 
-Nella radice del progetto:
+In the project root:
 
 ```dotenv
 MINIO_ENDPOINT=localhost:9000
 MINIO_ACCESS_KEY=smartfood_local
-MINIO_SECRET_KEY=sostituisci_con_una_password_locale
+MINIO_SECRET_KEY=replace_with_a_local_password
 MINIO_BUCKET_NAME=sentinel-data
 MINIO_API_PORT=9000
 MINIO_CONSOLE_PORT=9001
@@ -121,76 +122,76 @@ MODEL_WEIGHTS_PATH=weights/model.pth
 API_BASE_URL=http://localhost:8400
 ```
 
-Sostituisci la password prima di avviare i servizi.
+Replace the password before starting the services.
 
-Il Compose imposta automaticamente `MINIO_ENDPOINT=minio:9000` per l'API e `API_BASE_URL=http://api:8400` per la demo. Per i pesi, antepone `/` al valore di `MODEL_WEIGHTS_PATH`: usa quindi `weights/model.pth`, senza slash iniziale.
+Compose automatically sets `MINIO_ENDPOINT=minio:9000` for the API and `API_BASE_URL=http://api:8400` for the demo. For the weights, it prepends `/` to the value of `MODEL_WEIGHTS_PATH`: therefore, use `weights/model.pth`, without a leading slash.
 
-Il Dockerfile copia `weights/` in `/weights/`: la directory deve esistere prima della build. Se cambi il checkpoint, ricostruisci l'immagine API.
+The Dockerfile copies `weights/` to `/weights/`: the directory must exist before the build. If you change the checkpoint, rebuild the API image.
 
-### 3. Avvia i servizi
+### 3. Start the Services
 
 ```bash
 docker compose up -d --build
 docker compose logs -f api
 ```
 
-Il Compose avvia quattro servizi: `minio`, `createbuckets`, `api` e `demo`. Il servizio `createbuckets` crea il bucket; attendi il completamento prima di inviare un'analisi.
+Compose starts four services: `minio`, `createbuckets`, `api`, and `demo`. The `createbuckets` service creates the bucket; wait for it to finish before submitting an analysis.
 
-| Servizio | Indirizzo locale |
+| Service | Local Address |
 | --- | --- |
-| Demo Gradio | http://localhost:7860 |
+| Gradio demo | http://localhost:7860 |
 | Swagger UI | http://localhost:8400/satellite/docs |
 | ReDoc | http://localhost:8400/satellite/redoc |
-| Stato API | http://localhost:8400/satellite/health |
-| Console MinIO | http://localhost:9001 |
+| API health | http://localhost:8400/satellite/health |
+| MinIO console | http://localhost:9001 |
 
-Le porte MinIO cambiano se modifichi `MINIO_API_PORT` o `MINIO_CONSOLE_PORT`.
+The MinIO ports change if you modify `MINIO_API_PORT` or `MINIO_CONSOLE_PORT`.
 
-Per fermare lo stack:
+To stop the stack:
 
 ```bash
 docker compose down
 ```
 
-I dati MinIO sono conservati nella directory locale `minio_data/`.
+MinIO data is stored in the local `minio_data/` directory.
 
-## Avvio locale dell'API e della demo
+## Running the API and Demo Locally
 
-In un ambiente Python con PyTorch e le dipendenze geospaziali compatibili installati:
+In a Python environment with PyTorch and compatible geospatial dependencies installed:
 
 ```bash
 python -m pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8400
 ```
 
-Il file `requirements.txt` non include un requisito attivo per PyTorch: verifica che sia già disponibile nell'ambiente. MinIO deve essere raggiungibile, il bucket deve esistere e `.env` deve indicare il percorso locale del checkpoint.
+The `requirements.txt` file does not include an active PyTorch requirement: make sure PyTorch is already available in the environment. MinIO must be reachable, the bucket must exist, and `.env` must point to the local checkpoint path.
 
-In un secondo terminale, con lo stesso ambiente:
+In a second terminal, using the same environment:
 
 ```bash
 python demo_gui_endpoints.py
 ```
 
-Il modello seleziona CUDA quando disponibile e altrimenti usa la CPU. Per eseguire lo stack Docker senza GPU occorre rimuovere la prenotazione NVIDIA dal servizio `api`; i tempi di inferenza su CPU possono essere maggiori.
+The model selects CUDA when available and otherwise uses the CPU. To run the Docker stack without a GPU, remove the NVIDIA reservation from the `api` service; inference may take longer on the CPU.
 
 ## API
 
-Il prefisso configurato è `/satellite`.
+The configured prefix is `/satellite`.
 
-| Metodo | Percorso | Risultato |
+| Method | Path | Result |
 | --- | --- | --- |
-| POST | `/satellite/point` | Avvia un'analisi da punto; HTTP 202 e `task_id` |
-| POST | `/satellite/bbox` | Avvia un'analisi da bounding box; HTTP 202 e `task_id` |
-| GET | `/satellite/{task_id}/status` | Stato, progresso e risultati disponibili |
-| GET | `/satellite/{task_id}/image` | Overlay PNG |
-| GET | `/satellite/{task_id}/ndvi` | Statistiche NDVI stagionali |
-| GET | `/satellite/{task_id}/legend` | Legenda con ettari e percentuali |
-| GET | `/satellite/classes` | Catalogo statico delle classi, escluso lo sfondo |
-| GET | `/satellite/health` | Diagnostica modello, device e stato MinIO |
+| POST | `/satellite/point` | Starts a point-based analysis; HTTP 202 and `task_id` |
+| POST | `/satellite/bbox` | Starts a bounding-box analysis; HTTP 202 and `task_id` |
+| GET | `/satellite/{task_id}/status` | Status, progress, and available results |
+| GET | `/satellite/{task_id}/image` | PNG overlay |
+| GET | `/satellite/{task_id}/ndvi` | Seasonal NDVI statistics |
+| GET | `/satellite/{task_id}/legend` | Legend with hectares and percentages |
+| GET | `/satellite/classes` | Static class catalog, excluding background |
+| GET | `/satellite/health` | Model diagnostics, device, and MinIO status |
 
-Gli anni attualmente accettati sono **2017–2025**, con default **2023**. Il 2026 non è incluso nella configurazione corrente.
+The currently accepted years are **2017–2025**, with **2023** as the default. The current configuration does not include 2026.
 
-### Esempio: analisi di un punto
+### Example: Point Analysis
 
 ```bash
 curl -X POST http://localhost:8400/satellite/point \
@@ -198,18 +199,18 @@ curl -X POST http://localhost:8400/satellite/point \
   -d '{"lat":37.380,"lon":14.910,"year":2023}'
 ```
 
-La risposta contiene `task_id`, `status: "pending"` e `progress: 0`; gli altri campi del modello di risposta possono essere `null`.
+The response contains `task_id`, `status: "pending"`, and `progress: 0`; other fields in the response model may be `null`.
 
-Copia il valore restituito e interroga lo stato:
+Copy the returned value and query the status:
 
 ```bash
-TASK_ID="inserisci_il_task_id_restituito"
+TASK_ID="insert_the_returned_task_id"
 curl "http://localhost:8400/satellite/$TASK_ID/status"
 ```
 
-Gli stati sono `pending`, `running`, `completed` e `failed`. Ripeti il polling fino a `completed`; in caso di `failed`, consulta il campo `error`.
+The possible statuses are `pending`, `running`, `completed`, and `failed`. Keep polling until the status is `completed`; if it is `failed`, check the `error` field.
 
-Quando l'analisi è completata:
+Once the analysis is complete:
 
 ```bash
 curl "http://localhost:8400/satellite/$TASK_ID/image" -o overlay.png
@@ -217,13 +218,13 @@ curl "http://localhost:8400/satellite/$TASK_ID/ndvi"
 curl "http://localhost:8400/satellite/$TASK_ID/legend"
 ```
 
-Le richieste ai risultati prima del completamento restituiscono HTTP 202; un task inesistente restituisce HTTP 404.
+Requests for results before completion return HTTP 202; a nonexistent task returns HTTP 404.
 
-### Esempio: analisi di una bounding box
+### Example: Bounding Box Analysis
 
-L'ordine geografico è `[min_lon, min_lat, max_lon, max_lat]`. Entrambi i valori massimi devono essere maggiori dei rispettivi minimi.
+The geographic coordinate order is `[min_lon, min_lat, max_lon, max_lat]`. Both maximum values must be greater than their respective minimum values.
 
-> Il percorso BBox presenta un problema noto nella ricerca della cache, descritto più avanti. Per una prima verifica dello stack usa l'endpoint POI.
+> The BBox path has a known cache lookup issue, described further below. Use the POI endpoint for an initial check of the stack.
 
 ```bash
 curl -X POST http://localhost:8400/satellite/bbox \
@@ -231,81 +232,79 @@ curl -X POST http://localhost:8400/satellite/bbox \
   -d '{"min_lon":14.395,"min_lat":35.880,"max_lon":14.455,"max_lat":35.940,"year":2023}'
 ```
 
-La procedura di polling e recupero dei risultati è identica a quella del punto.
+The polling and result retrieval procedure is the same as for point analysis.
 
-## Interpretazione dei risultati
+## Interpreting the Results
 
-- `source`: `minio` se il cubo proviene dalla cache, `stac` se è stato scaricato.
-- `year_used`: anno effettivamente utilizzato.
-- `bbox`: area geografica del cubo risolto.
-- `class_stats`: superfici per le classi presenti, ordinate per ettari decrescenti.
-- `total_ha`: somma delle superfici classificate, **escluso lo sfondo**.
-- `percentage`: quota sul totale dei pixel non-sfondo, non sull'intera bounding box.
-- `ndvi_series`: quattro punti stagionali, calcolati sui pixel con classe maggiore di 0, inclusa la classe Incolto.
+- `source`: `minio` if the cube comes from the cache, or `stac` if it was downloaded.
+- `year_used`: the year actually used.
+- `bbox`: the geographic extent of the resolved cube.
+- `class_stats`: areas for the classes present, sorted by hectares in descending order.
+- `total_ha`: the sum of classified areas, **excluding background**.
+- `percentage`: the proportion of all non-background pixels, rather than of the entire bounding box.
+- `ndvi_series`: four seasonal data points, calculated over pixels with a class greater than 0, including the Uncultivated land class.
 
-Le superfici sono calcolate assumendo **100 m² per pixel**, cioè **0,01 ha**. L'NDVI usa `(NIR - Red) / (NIR + Red + 1e-6)`. L'overlay combina l'RGB estivo e la segmentazione con opacità predefinita del **55%**.
+Areas are calculated assuming **100 m² per pixel**, or **0.01 ha**. NDVI uses `(NIR - Red) / (NIR + Red + 1e-6)`. The overlay combines the summer RGB image and the segmentation, with a default opacity of **55%**.
 
-Per le richieste POI, un hit in cache usa un crop fino a **800 × 800 pixel**; il download STAC usa un bbox centrato sul punto di **0,1° per lato**. L'area restituita può quindi differire tra cache e primo download: consulta sempre `bbox`.
+For POI requests, a cache hit uses a crop of up to **800 × 800 pixels**; the STAC download uses a bounding box centered on the point, measuring **0.1° on each side**. The returned area may therefore differ between a cache hit and the initial download: always check `bbox`.
 
-## Configurazione
+## Configuration
 
-| Variabile ambiente | Uso |
+| Environment Variable | Purpose |
 | --- | --- |
-| `MINIO_ENDPOINT` | Host e porta MinIO, senza schema; il client corrente usa HTTP |
-| `MINIO_ACCESS_KEY` | Credenziale MinIO, obbligatoria |
-| `MINIO_SECRET_KEY` | Credenziale MinIO, obbligatoria |
-| `MINIO_BUCKET_NAME` | Bucket per cubi e anteprime |
-| `MODEL_WEIGHTS_PATH` | Percorso dello state dictionary PyTorch |
-| `API_BASE_URL` | URL base dell'API usato dalla demo, senza `/satellite` |
-| `MINIO_API_PORT` | Porta host MinIO nel Compose; default 9000 |
-| `MINIO_CONSOLE_PORT` | Porta host della console nel Compose; default 9001 |
-| `MIN_CONFIDENCE` | Soglia opzionale; default 0, filtro disabilitato |
+| `MINIO_ENDPOINT` | MinIO host and port, without a scheme; the current client uses HTTP |
+| `MINIO_ACCESS_KEY` | MinIO credential, required |
+| `MINIO_SECRET_KEY` | MinIO credential, required |
+| `MINIO_BUCKET_NAME` | Bucket for cubes and previews |
+| `MODEL_WEIGHTS_PATH` | Path to the PyTorch state dictionary |
+| `API_BASE_URL` | API base URL used by the demo, without `/satellite` |
+| `MINIO_API_PORT` | MinIO host port in Compose; default 9000 |
+| `MINIO_CONSOLE_PORT` | Console host port in Compose; default 9001 |
+| `MIN_CONFIDENCE` | Optional threshold; default 0, filter disabled |
 
-Per usare `MIN_CONFIDENCE` nel container API aggiungila al blocco `environment` del servizio: il Compose corrente non la inoltra.
+To use `MIN_CONFIDENCE` in the API container, add it to the service's `environment` block: the current Compose file does not pass it through.
 
-Le altre impostazioni sono costanti in `config.py`: bande, classi, normalizzazione, overlap, soglie acqua, anni supportati e limite di inferenze concorrenti, pari a **4**. La correzione delle predizioni con i prior di classe è attiva tramite `APPLY_PRIOR_CORRECTION=True`.
+The other settings are constants in `config.py`: bands, classes, normalization, overlap, water thresholds, supported years, and the concurrent inference limit, set to **4**. Prediction correction using class priors is enabled through `APPLY_PRIOR_CORRECTION=True`.
 
-## Struttura del codice
+## Code Structure
 
-| File | Responsabilità |
+| File | Responsibility |
 | --- | --- |
-| `main.py` | Applicazione FastAPI, task e endpoint |
-| `schemas.py` | Validazione e modelli di risposta Pydantic |
-| `config.py` | Variabili ambiente e parametri della pipeline |
-| `architecture.py` | Decoder residuo e architettura di segmentazione |
-| `model_service.py` | Caricamento del modello, normalizzazione e inferenza dei chip |
-| `inference_engine.py` | Sliding window, ricomposizione e filtri |
-| `data_resolver.py` | Risoluzione dei dati e ritagli geografici |
-| `stac_downloader.py` | Selezione stagionale e download Sentinel-2 |
-| `minio_store.py` | Ricerca, download e upload nella cache |
-| `postprocess.py` | Overlay, statistiche e NDVI |
-| `demo_gui_endpoints.py` | Interfaccia Gradio |
-| `Dockerfile` / `Dockerfile.demo` | Immagini API e demo |
-| `docker-compose.yaml` | Orchestrazione dei servizi |
-| `requirements.txt` | Dipendenze Python |
+| `main.py` | FastAPI application, tasks, and endpoints |
+| `schemas.py` | Pydantic validation and response models |
+| `config.py` | Environment variables and pipeline parameters |
+| `architecture.py` | Residual decoder and segmentation architecture |
+| `model_service.py` | Model loading, normalization, and chip inference |
+| `inference_engine.py` | Sliding window, reconstruction, and filters |
+| `data_resolver.py` | Data resolution and geographic cropping |
+| `stac_downloader.py` | Seasonal selection and Sentinel-2 downloads |
+| `minio_store.py` | Cache lookup, download, and upload |
+| `postprocess.py` | Overlays, statistics, and NDVI |
+| `demo_gui_endpoints.py` | Gradio interface |
+| `Dockerfile` / `Dockerfile.demo` | API and demo images |
+| `docker-compose.yaml` | Service orchestration |
+| `requirements.txt` | Python dependencies |
 
-I cubi sono salvati in MinIO sotto `raw_cubes/year=YYYY/`; le anteprime RGB sotto `rgb_images/year=YYYY/`. I metadata includono bbox, anno e forma del cubo.
+Cubes are stored in MinIO under `raw_cubes/year=YYYY/`; RGB previews are stored under `rgb_images/year=YYYY/`. Metadata includes the bounding box, year, and cube shape.
 
-## Risoluzione dei problemi
+## Troubleshooting
 
-| Problema | Verifica |
+| Problem | What to Check |
 | --- | --- |
-| Credenziali MinIO mancanti | Definisci `MINIO_ACCESS_KEY` e `MINIO_SECRET_KEY` nell'ambiente o in `.env` |
-| Build fallita su `COPY weights/` | Crea la directory e inserisci il checkpoint prima della build |
-| Pesi non trovati o incompatibili | Controlla percorso e compatibilità dello state dictionary con l'architettura |
-| API non parte con Docker | Controlla i log, il supporto GPU e l'accesso al catalogo STAC |
-| Nessun dato disponibile | Controlla coordinate, anno e disponibilità di una scena per ogni stagione |
-| Analisi BBox fallita | Verifica il problema della cache descritto nei limiti |
-| Timeout nella demo | Consulta `/status` e i log API; prova un'area più piccola |
+| Missing MinIO credentials | Define `MINIO_ACCESS_KEY` and `MINIO_SECRET_KEY` in the environment or in `.env` |
+| Build fails at `COPY weights/` | Create the directory and add the checkpoint before building |
+| Weights not found or incompatible | Check the path and the state dictionary's compatibility with the architecture |
+| API fails to start with Docker | Check the logs, GPU support, and access to the STAC catalog |
+| No data available | Check the coordinates, year, and availability of a scene for each season |
+| BBox analysis fails | Check the cache issue described in the limitations |
+| Demo times out | Check `/status` and the API logs; try a smaller area |
 
-## Licenza
+## License
 
-Nel repository non è presente un file `LICENSE`. Le condizioni di riutilizzo del codice devono essere definite dall'autore; verifica separatamente quelle applicabili ai pesi del modello e ai dati satellitari.
+The repository does not contain a `LICENSE` file. The author must define the terms for reusing the code; check the terms applicable to the model weights and satellite data separately.
 
-## Autore
+## Author
 
 [Domenico Villari](https://github.com/DomenicoVillari3)
 
 Repository: [crop-segmentation-Sicily-Malta](https://github.com/DomenicoVillari3/crop-segmentation-Sicily-Malta)
-
-
